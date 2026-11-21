@@ -6,8 +6,8 @@ import { authConfig } from "./config";
 import { policyVersions } from "./policy-versions";
 import { clearSessionCookie, requestAuth, sessionUser } from "./neon-auth";
 import { findProfile, saveProfile } from "./profiles";
-import { clearSignupDraft, profileAcceptance, readSignupDraft, setSignupDraft } from "./signup-draft";
-import { type AuthFormState, authUnavailable } from "./state";
+import { clearSignupDraft, clearVerificationHandoff, profileAcceptance, readSignupDraft, setSignupDraft, setVerificationHandoff } from "./signup-draft";
+import { type AuthFormState, authUnavailable, codeRequestErrors, verificationNotice } from "./state";
 
 function emailFrom(data: FormData) {
   return textValue(data, "email").trim().toLowerCase();
@@ -27,6 +27,25 @@ function providerMessage(status: number, fallback: string) {
   return fallback;
 }
 
+function codeRequestOutcome(result: Awaited<ReturnType<typeof requestAuth>>, intent: "sendVerification" | "sendReset") {
+  if (result.ok) return "requested";
+  if (result.status === 429) return "rate-limited";
+  // Don't reveal whether the address is registered or already verified.
+  // An unrecognized failure (including a forbidden request) is not a delivery acknowledgement.
+  if ([400, 404, 409, 422].includes(result.status) && (result.code === "USER_NOT_FOUND"
+    || (intent === "sendVerification" && result.code === "EMAIL_ALREADY_VERIFIED"))) {
+    return "requested";
+  }
+  return "unavailable";
+}
+
+async function requestVerificationCode(email: string) {
+  return codeRequestOutcome(
+    await requestAuth("sendVerification", { email, type: "email-verification" }),
+    "sendVerification",
+  );
+}
+
 export async function createAccount(data: FormData) {
   if (!authConfig()) return { error: authUnavailable };
 
@@ -40,11 +59,15 @@ export async function createAccount(data: FormData) {
     name: validation.operatorId,
     password: textValue(data, "password"),
   });
-  if (!result.ok && result.code !== "USER_ALREADY_EXISTS" && result.code !== "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
+  const duplicate = !result.ok && (result.code === "USER_ALREADY_EXISTS" || result.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL");
+  if (!result.ok && !duplicate) {
     return { error: providerMessage(result.status, "We couldn’t start signup. Check your details and try again.") };
   }
 
+  // New signups request a code automatically through the provider. Duplicates need a separate request.
+  const request = duplicate ? await requestVerificationCode(email) : "requested";
   await setSignupDraft(email, validation.operatorId);
+  await setVerificationHandoff(email, request);
   return { verify: true as const };
 }
 
@@ -77,11 +100,15 @@ export async function logIn(_: AuthFormState, data: FormData): Promise<AuthFormS
   }
 
   const result = await requestAuth("login", { email, password });
-  if (result.code === "EMAIL_NOT_VERIFIED") redirect("/verify-email");
+  if (result.code === "EMAIL_NOT_VERIFIED") {
+    await setVerificationHandoff(email, "not-requested");
+    redirect("/verify-email");
+  }
   if (!result.ok) {
     return { error: providerMessage(result.status, "The email or password is incorrect."), email };
   }
 
+  await clearVerificationHandoff();
   await finishSignup(email);
   return { error: authUnavailable, email };
 }
@@ -98,6 +125,7 @@ export async function verifyEmail(state: AuthFormState, data: FormData): Promise
     return { field: "otp", error: providerMessage(result.status, "That code is incorrect or expired."), email };
   }
 
+  await clearVerificationHandoff();
   await finishSignup(email);
   redirect("/login?verified=1");
 }
@@ -106,24 +134,19 @@ async function resendVerification(_: AuthFormState, data: FormData): Promise<Aut
   const email = emailFrom(data);
   if (!isValidEmail(email)) return { field: "email", error: "Enter a valid email address.", email };
 
-  const result = await requestAuth("sendVerification", { email, type: "email-verification" });
-  if (providerUnavailable(result.status) || result.status === 429) {
-    return { error: providerMessage(result.status, authUnavailable), email };
-  }
-
-  return { notice: "If that email needs verification, a new code is on its way.", email };
+  const request = await requestVerificationCode(email);
+  await setVerificationHandoff(email, request);
+  return request === "requested" ? { notice: verificationNotice, email } : { error: codeRequestErrors[request], email };
 }
 
 async function sendPasswordReset(_: AuthFormState, data: FormData): Promise<AuthFormState> {
   const email = emailFrom(data);
   if (!isValidEmail(email)) return { field: "email", error: "Enter a valid email address.", email };
 
-  const result = await requestAuth("sendReset", { email });
-  if (providerUnavailable(result.status) || result.status === 429) {
-    return { error: providerMessage(result.status, authUnavailable), email };
-  }
-
-  return { notice: "If an account exists, a reset code is on its way.", email };
+  const request = codeRequestOutcome(await requestAuth("sendReset", { email }), "sendReset");
+  return request === "requested"
+    ? { notice: "Code requested. If the address is registered, check its inbox for a reset code.", email }
+    : { error: codeRequestErrors[request], email };
 }
 
 export async function resetPassword(state: AuthFormState, data: FormData): Promise<AuthFormState> {
@@ -175,6 +198,7 @@ export async function signOut(): Promise<void> {
   const result = await requestAuth("logout", {});
   await clearSessionCookie();
   await clearSignupDraft();
+  await clearVerificationHandoff();
   if (!result.ok && result.status !== 401) redirect("/login?signout=local");
 
   redirect("/login");

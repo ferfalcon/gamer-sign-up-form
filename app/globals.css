@@ -246,29 +246,6 @@ body {
   z-index: 1;
 }
 
-.signup-strength {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.25rem;
-}
-
-.signup-strength span {
-  block-size: 0.25rem;
-  background-color: var(--color-panel-border);
-}
-
-.signup-strength [data-lit="true"] {
-  background-color: var(--color-accent);
-}
-
-.signup-strength[data-level="1"] [data-lit="true"] {
-  background-color: var(--color-error);
-}
-
-.signup-strength:is([data-level="2"], [data-level="3"]) [data-lit="true"] {
-  background-color: hsl(40 100% 65%);
-}
-
 .signup-terms {
   display: flex;
   align-items: flex-start;

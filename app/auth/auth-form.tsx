@@ -114,7 +114,7 @@ export default function AuthForm({
           {pending ? "Please wait…" : mode === "reset" && !showReset ? "Send reset code" : submitLabels[mode]}
         </button>
         {(mode === "verify" || showReset) && (
-          <button className="signup-link" type="submit" name="intent" value="send" formNoValidate>Send a new code</button>
+          <button className="signup-link" type="submit" name="intent" value="send" formNoValidate>Request a code</button>
         )}
       </fieldset>
     </form>

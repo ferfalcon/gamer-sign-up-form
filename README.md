@@ -29,14 +29,14 @@ psql "$DATABASE_URL_UNPOOLED" -v ON_ERROR_STOP=1 -f db/migrations/001_player_pro
 ## Account flow
 
 - `/` validates signup, then `/verify-email` accepts the emailed code and saves the profile after verification. The signed signup cookie expires after 30 minutes.
-- `/login` accepts email and password. `/account` displays the saved callsign and offers sign-out.
+- `/login` accepts email and password. If the email is unverified, the verification page prefills it and offers to request a code. `/account` displays the saved callsign and offers sign-out.
 - `/complete-profile` lets a verified user finish an interrupted signup, retry a failed save, or choose a different callsign.
 - `/reset-password` uses a one-time code sent to the account’s email address.
 
 ## Data and sessions
 
 - Next.js Server Actions call Neon’s managed REST API for account creation, verification, and login. Neon Auth owns email addresses, password hashes, and session records. Next.js stores the session token in an HTTP-only cookie and checks it with Neon Auth before reading or writing account data. [Auth actions](app/auth/actions.ts) · [Neon Auth client](app/auth/neon-auth.ts) · [Neon authentication flow](https://neon.com/docs/auth/authentication-flow)
-- A signed, HTTP-only signup cookie carries the callsign and policy acceptance through email verification. The app matches it to the verified session’s email before saving the profile. If the cookie expires, a verified user can finish signup from `/complete-profile`. [Signup cookie](app/auth/signup-draft.ts)
+- A signed, HTTP-only signup cookie carries the callsign and policy acceptance through email verification. The app matches it to the verified session’s email before saving the profile. If the cookie expires, a verified user can finish signup from `/complete-profile`. A separate signed, HTTP-only cookie carries the email and code-request status to verification for up to 30 minutes without putting the email in the URL. [Signup and verification cookies](app/auth/signup-draft.ts)
 - Postgres stores one `player_profiles` row per Neon Auth user ID. The row includes the callsign, acceptance timestamp, and the versions of the Terms and Privacy Policy. Callsigns preserve display casing and are unique regardless of case. Retries preserve the profile and acceptance already recorded for the user. [Profile queries](app/auth/profiles.ts) · [Migration](db/migrations/001_player_profiles.sql)
 
 ## Vercel deployments

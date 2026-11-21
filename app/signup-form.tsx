@@ -9,7 +9,7 @@ import { createAccount } from "./auth/actions";
 import { policyVersions } from "./auth/policy-versions";
 import { type DemoSignupResult, submitDemoSignup } from "./signup-demo";
 import { signupDestinations } from "./signup-destinations";
-import { type Field, fieldLabels, fields, strengthLabels, validateSignup } from "./signup-validation";
+import { type Field, fieldLabels, fields, passwordLimits, validateSignup } from "./signup-validation";
 
 const passwordFields = [
   { id: "password", label: "Password" },
@@ -50,7 +50,7 @@ export default function SignupForm({ live }: { live: boolean }) {
 
   const pending = submission.phase === "pending";
   const success = submission.phase === "success";
-  const { readyCount, strength } = validation;
+  const { readyCount } = validation;
   const operatorId = success ? submission.result.callsign : validation.operatorId;
   const exposedIssue = (field: Field) =>
     attempt.count || touched[field] ? validation.issues[field] : undefined;
@@ -164,10 +164,10 @@ export default function SignupForm({ live }: { live: boolean }) {
         </div>
         <div className="signup-summary">
           <p className="signup-count" data-ready={success || readyCount === fields.length}>
-            {success ? "Simulated" : `${readyCount}/${fields.length} ready`}
+            {success ? "Simulated" : `${readyCount}/${fields.length} ${live ? "fields valid" : "ready"}`}
           </p>
           <dl className="signup-operator">
-            <dt>Operator ID</dt>
+            <dt>{live ? "Provisional callsign" : "Operator ID"}</dt>
             <dd data-assigned={Boolean(operatorId)}>{operatorId || "Unassigned"}</dd>
           </dl>
           <dl className="signup-checks">
@@ -269,15 +269,7 @@ export default function SignupForm({ live }: { live: boolean }) {
                     </button>
                   </div>
                   {id === "password" && (
-                    <>
-                      <div className="signup-strength" data-level={strength} aria-hidden="true">
-                        {[1, 2, 3, 4].map((segment) => <span key={segment} data-lit={segment <= strength} />)}
-                      </div>
-                      <p id="password-hint">
-                        <span className={strength ? "sr-only" : undefined}>At least 8 characters.</span>
-                        {strength > 0 && ` Password strength: ${strengthLabels[strength]}`}
-                      </p>
-                    </>
+                    <p id="password-hint">Use {passwordLimits.min}–{passwordLimits.max} characters.</p>
                   )}
                   <FieldError field={id} message={exposedIssue(id)?.message} />
                 </div>
@@ -288,8 +280,8 @@ export default function SignupForm({ live }: { live: boolean }) {
                   <input {...inputState("terms")} id="terms" type="checkbox" name="terms" aria-labelledby="terms-label" required />
                   <span id="terms-label">
                     <label htmlFor="terms">I accept the</label>{" "}
-                    <Link className="signup-link" href={signupDestinations.terms} onNavigate={resetForm}>Terms</Link>{" and "}
-                    <Link className="signup-link" href={signupDestinations.privacy} onNavigate={resetForm}>Privacy Policy</Link>.
+                    <Link className="signup-link" href={signupDestinations.terms} target="_blank" rel="noopener noreferrer" aria-label="Terms (opens in a new tab)">Terms</Link>{" and "}
+                    <Link className="signup-link" href={signupDestinations.privacy} target="_blank" rel="noopener noreferrer" aria-label="Privacy Policy (opens in a new tab)">Privacy Policy</Link>.
                   </span>
                 </div>
                 <FieldError field="terms" message={exposedIssue("terms")?.message} />
@@ -299,7 +291,8 @@ export default function SignupForm({ live }: { live: boolean }) {
                 {submission.phase === "failure" && (
                   <p className="signup-error" role="alert">{submission.message}</p>
                 )}
-                <button className="signup-primary" type="submit" data-pending={pending} aria-describedby={live ? undefined : "signup-preview"}>
+                {live && <p id="signup-next">Next: verify your email with a six-digit code. Callsign availability is checked after verification.</p>}
+                <button className="signup-primary" type="submit" data-pending={pending} aria-describedby={live ? "signup-next" : "signup-preview"}>
                   {pending ? "Transmitting_" : live ? "Create account" : "Simulate sign-up"}
                 </button>
                 <p>

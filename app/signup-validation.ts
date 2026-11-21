@@ -19,17 +19,6 @@ export function textValue(data: FormData, field: string) {
   return typeof value === "string" ? value : "";
 }
 
-function strengthLevel(password: string) {
-  if (!password) return 0;
-  if (password.length < 8) return 1;
-  const variety = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9\s]/]
-    .filter((pattern) => pattern.test(password)).length;
-  if (password.length >= 12 && variety >= 3) return 4;
-  return variety >= 2 || password.length >= 12 ? 3 : 2;
-}
-
-export const strengthLabels = ["", "Weak", "Fair", "Good", "Strong"] as const;
-
 export function isValidEmail(email: string) {
   return email.length <= 254 && emailPattern.test(email);
 }
@@ -81,6 +70,5 @@ export function validateSignup(data: FormData) {
     invalid,
     readyCount: fields.length - invalid.length,
     operatorId: issues.callsign ? "" : callsign,
-    strength: strengthLevel(password),
   };
 }
