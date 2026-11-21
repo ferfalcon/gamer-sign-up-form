@@ -14,7 +14,7 @@ type Issue = { message: string; status: string };
 // Matches the syntax of a single native email input.
 const emailPattern = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
-function textValue(data: FormData, field: Field) {
+export function textValue(data: FormData, field: string) {
   const value = data.get(field);
   return typeof value === "string" ? value : "";
 }
@@ -30,12 +30,15 @@ function strengthLevel(password: string) {
 
 export const strengthLabels = ["", "Weak", "Fair", "Good", "Strong"] as const;
 
-export function validateSignup(data: FormData) {
+export function isValidEmail(email: string) {
+  return email.length <= 254 && emailPattern.test(email);
+}
+
+export const passwordLimits = { min: 8, max: 128 } as const;
+
+export function validateProfile(data: FormData) {
   const callsign = textValue(data, "callsign").trim();
-  const email = textValue(data, "email").trim();
-  const password = textValue(data, "password");
-  const confirmation = textValue(data, "confirm-password");
-  const issues: Partial<Record<Field, Issue>> = {};
+  const issues: Partial<Record<"callsign" | "terms", Issue>> = {};
 
   if (callsign.length < 3) {
     issues.callsign = { message: "Use at least 3 characters", status: "Too short" };
@@ -44,11 +47,27 @@ export function validateSignup(data: FormData) {
   } else if (!/^[a-zA-Z0-9_-]+$/.test(callsign)) {
     issues.callsign = { message: "Use only letters, numbers, _ or -", status: "Invalid" };
   }
-  if (!emailPattern.test(email)) {
+  if (data.get("terms") !== "on") {
+    issues.terms = { message: "Accept the terms to continue", status: "Required" };
+  }
+
+  return { callsign, issues };
+}
+
+export function validateSignup(data: FormData) {
+  const { callsign, issues: profileIssues } = validateProfile(data);
+  const email = textValue(data, "email").trim();
+  const password = textValue(data, "password");
+  const confirmation = textValue(data, "confirm-password");
+  const issues: Partial<Record<Field, Issue>> = { ...profileIssues };
+
+  if (!isValidEmail(email)) {
     issues.email = { message: "Enter a valid email, like you@example.com", status: "Malformed" };
   }
-  if (password.length < 8) {
+  if (password.length < passwordLimits.min) {
     issues.password = { message: "Use at least 8 characters", status: "Too short" };
+  } else if (password.length > passwordLimits.max) {
+    issues.password = { message: "Use at most 128 characters", status: "Too long" };
   }
   if (!confirmation || confirmation !== password) {
     issues["confirm-password"] = {
@@ -56,10 +75,6 @@ export function validateSignup(data: FormData) {
       status: confirmation ? "Mismatch" : "Required",
     };
   }
-  if (data.get("terms") !== "on") {
-    issues.terms = { message: "Accept the terms to continue", status: "Required" };
-  }
-
   const invalid = fields.filter((field) => issues[field]);
   return {
     issues,

@@ -2,8 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
+import { createAccount } from "./auth/actions";
+import { policyVersions } from "./auth/policy-versions";
 import { type DemoSignupResult, submitDemoSignup } from "./signup-demo";
 import { signupDestinations } from "./signup-destinations";
 import { type Field, fieldLabels, fields, strengthLabels, validateSignup } from "./signup-validation";
@@ -19,7 +22,8 @@ const clientReady = () => true;
 const serverReady = () => false;
 
 type Submission =
-  | { phase: "edit" | "pending" | "failure" }
+  | { phase: "edit" | "pending" }
+  | { phase: "failure"; message: string }
   | { phase: "success"; result: DemoSignupResult };
 
 function FieldError({ field, message }: { field: Field; message?: string }) {
@@ -32,7 +36,8 @@ function FieldError({ field, message }: { field: Field; message?: string }) {
   );
 }
 
-export default function SignupForm() {
+export default function SignupForm({ live }: { live: boolean }) {
+  const router = useRouter();
   const hydrated = useSyncExternalStore(subscribe, clientReady, serverReady);
   const [validation, setValidation] = useState(initialValidation);
   const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
@@ -72,7 +77,8 @@ export default function SignupForm() {
     if (inFlight.current) return;
     const form = event.currentTarget;
     // Read the actual controls, including values supplied by autofill, before locking them.
-    const submitted = validateSignup(new FormData(form));
+    const data = new FormData(form);
+    const submitted = validateSignup(data);
     const [firstInvalid] = submitted.invalid;
     if (firstInvalid) {
       flushSync(() => {
@@ -90,6 +96,29 @@ export default function SignupForm() {
     setAttempt((previous) => ({ ...previous, invalid: 0 }));
     setSubmission({ phase: "pending" });
     try {
+      if (live) {
+        const result = await createAccount(data);
+        if (inFlight.current !== request || formRef.current !== form) return;
+        if (result.verify) {
+          resetForm();
+          router.push("/verify-email");
+          return;
+        }
+        const firstInvalid = fields.find((field) => result.issues?.[field]);
+        if (firstInvalid) {
+          flushSync(() => {
+            setValidation({ ...submitted, issues: result.issues ?? {}, invalid: [firstInvalid] });
+            setAttempt((previous) => ({ count: previous.count + 1, invalid: 1 }));
+            setSubmission({ phase: "edit" });
+          });
+          form.querySelector<HTMLElement>(`#${firstInvalid}`)?.focus();
+          return;
+        }
+        flushSync(() => setSubmission({ phase: "failure", message: result.error ?? "Try submitting again." }));
+        form.querySelector<HTMLButtonElement>(".signup-primary")?.focus();
+        return;
+      }
+
       const result = await submitDemoSignup(submitted.operatorId);
       if (inFlight.current !== request || formRef.current !== form) return;
       flushSync(() => {
@@ -100,14 +129,16 @@ export default function SignupForm() {
       successHeading.current?.focus();
     } catch {
       if (inFlight.current !== request || formRef.current !== form) return;
-      flushSync(() => setSubmission({ phase: "failure" }));
+      flushSync(() => setSubmission({
+        phase: "failure", message: "The handshake failed. Your entries are still here. Try again.",
+      }));
       form.querySelector<HTMLButtonElement>(".signup-primary")?.focus();
     } finally {
       if (inFlight.current === request) inFlight.current = null;
     }
   }
 
-  function resetDemo() {
+  function resetForm() {
     // The App Router can retain a hidden page on navigation. Clear it before leaving.
     inFlight.current = null;
     formRef.current?.reset();
@@ -119,7 +150,7 @@ export default function SignupForm() {
   }
 
   function restart() {
-    flushSync(resetDemo);
+    flushSync(resetForm);
     formRef.current?.querySelector<HTMLInputElement>("#callsign")?.focus();
   }
 
@@ -173,7 +204,7 @@ export default function SignupForm() {
               <span aria-hidden="true">{"// "}</span>Handshake complete
             </h2>
             <p id="signup-outcome">Sign-up simulated for {submission.result.callsign}. No account was created.</p>
-            <Link className="signup-primary" href={signupDestinations.login} onNavigate={resetDemo}>Continue to demo log in</Link>
+            <Link className="signup-primary" href={signupDestinations.login} onNavigate={resetForm}>Continue to demo log in</Link>
             <button className="signup-link" type="button" onClick={restart}>Restart demo</button>
           </div>
         ) : (
@@ -187,6 +218,12 @@ export default function SignupForm() {
             onBlur={trackBlur}
             onSubmit={submit}
           >
+            {live && (
+              <>
+                <input type="hidden" name="terms-version" value={policyVersions.terms} />
+                <input type="hidden" name="privacy-version" value={policyVersions.privacy} />
+              </>
+            )}
             <fieldset className="signup-form" disabled={pending || !hydrated} data-pending={pending}>
               <legend className="sr-only">Registration details</legend>
               <header className="signup-form-heading">
@@ -199,7 +236,7 @@ export default function SignupForm() {
                 <input
                   {...inputState("callsign", "callsign-hint")}
                   id="callsign" name="callsign" type="text" placeholder="e.g. Vortex_07"
-                  autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required
+                  autoComplete={live ? "nickname" : "username"} autoCapitalize="none" autoCorrect="off" spellCheck={false} required
                 />
                 <p id="callsign-hint">3–20 characters: letters, numbers, _ or -</p>
                 <FieldError field="callsign" message={exposedIssue("callsign")?.message} />
@@ -210,7 +247,7 @@ export default function SignupForm() {
                 <input
                   {...inputState("email")}
                   id="email" name="email" type="email" placeholder="you@example.com"
-                  autoComplete="email" spellCheck={false} required
+                  autoComplete={live ? "username" : "email"} spellCheck={false} required
                 />
                 <FieldError field="email" message={exposedIssue("email")?.message} />
               </div>
@@ -251,8 +288,8 @@ export default function SignupForm() {
                   <input {...inputState("terms")} id="terms" type="checkbox" name="terms" aria-labelledby="terms-label" required />
                   <span id="terms-label">
                     <label htmlFor="terms">I accept the</label>{" "}
-                    <Link className="signup-link" href={signupDestinations.terms} onNavigate={resetDemo}>Terms</Link>{" and "}
-                    <Link className="signup-link" href={signupDestinations.privacy} onNavigate={resetDemo}>Privacy Policy</Link>.
+                    <Link className="signup-link" href={signupDestinations.terms} onNavigate={resetForm}>Terms</Link>{" and "}
+                    <Link className="signup-link" href={signupDestinations.privacy} onNavigate={resetForm}>Privacy Policy</Link>.
                   </span>
                 </div>
                 <FieldError field="terms" message={exposedIssue("terms")?.message} />
@@ -260,14 +297,14 @@ export default function SignupForm() {
 
               <div className="signup-action">
                 {submission.phase === "failure" && (
-                  <p className="signup-error" role="alert">The handshake failed. Your entries are still here. Try again.</p>
+                  <p className="signup-error" role="alert">{submission.message}</p>
                 )}
-                <button className="signup-primary" type="submit" data-pending={pending} aria-describedby="signup-preview">
-                  {pending ? "Transmitting_" : "Simulate sign-up"}
+                <button className="signup-primary" type="submit" data-pending={pending} aria-describedby={live ? undefined : "signup-preview"}>
+                  {pending ? "Transmitting_" : live ? "Create account" : "Simulate sign-up"}
                 </button>
                 <p>
-                  <span id="signup-preview">Use made-up details.</span>{" "}
-                  <Link className="signup-link" href={signupDestinations.login} onNavigate={resetDemo}>Demo log in</Link>
+                  {live ? "Already registered? " : <><span id="signup-preview">Use made-up details.</span>{" "}</>}
+                  <Link className="signup-link" href={signupDestinations.login} onNavigate={resetForm}>{live ? "Log in" : "Demo log in"}</Link>
                 </p>
               </div>
             </fieldset>
