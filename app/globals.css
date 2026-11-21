@@ -1,26 +1,169 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: dark;
+  --color-page: hsl(214 37% 4%);
+  --color-panel: hsl(210 39% 7%);
+  --color-panel-border: hsl(211 22% 24%);
+  --color-control-border: hsl(210 18% 42%);
+  --color-muted: hsl(211 18% 68%);
+  --color-text: hsl(208 49% 92%);
+  --color-accent: hsl(77 90% 59%);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-page);
+  color: var(--color-text);
+  font-family: var(--font-jetbrains-mono), monospace;
+}
+
+:where(input, button):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.signup {
+  display: grid;
+  gap: 1.5rem;
+  max-inline-size: 37rem;
+  margin-inline: auto;
+  padding: 2rem 1rem;
+}
+
+.signup-brand h1 {
+  margin-block: 1.5rem 0.5rem;
+  font: 800 2.25rem/1.12 var(--font-orbitron), sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.signup-brand h1 span {
+  color: var(--color-accent);
+}
+
+.signup-brand p,
+.signup-readout,
+.signup-form-heading,
+.signup-field label {
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.signup-brand p,
+.signup-form p {
+  color: var(--color-muted);
+}
+
+.signup-readout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 1rem;
+  padding-block: 0.75rem;
+  border-block: 1px solid var(--color-panel-border);
+}
+
+.signup-operator {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+.signup-form {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--color-panel-border);
+  background-color: var(--color-panel);
+}
+
+.signup-form-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding-block-end: 0.75rem;
+  border-block-end: 1px solid var(--color-panel-border);
+}
+
+.signup-form-heading h2 {
+  font-weight: 700;
+}
+
+.signup-field,
+.signup-action {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.signup-field p,
+.signup-action p {
+  font-size: 0.75rem;
+}
+
+.signup-field input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 3rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-control-border);
+  background-color: var(--color-page);
+  font-size: 1rem;
+}
+
+.signup-field input::placeholder {
+  color: var(--color-muted);
+}
+
+.signup-field input[type="password"] {
+  letter-spacing: 0.16em;
+}
+
+.signup-password {
+  display: flex;
+}
+
+.signup-password button {
+  display: grid;
+  flex: 0 0 3rem;
+  place-items: center;
+  margin-inline-start: -1px;
+  border: 1px solid var(--color-control-border);
+  cursor: pointer;
+}
+
+.signup-password button:hover {
+  background-color: var(--color-page);
+}
+
+.signup-password :focus-visible {
+  z-index: 1;
+}
+
+.signup-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  cursor: pointer;
+}
+
+.signup-terms input {
+  flex: 0 0 1.5rem;
+  block-size: 1.5rem;
+  accent-color: var(--color-accent);
+}
+
+.signup-action button {
+  min-block-size: 3rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-panel-border);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }

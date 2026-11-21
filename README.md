@@ -1,51 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gamer sign-up form
 
-## Getting Started
+NEONCORE sign-up preview built with the Next.js App Router. The current milestone is the route foundation at `/`. [Figma WIP](https://www.figma.com/design/45xWfb2GJsOCfNp19eHClJ/gamer-sign-up-form?node-id=477-1812)
 
-First, run the development server:
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The preview runs without database configuration.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Implemented
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- The home route renders the NEONCORE heading and a single-column form shell. The root layout sets the page metadata and loads the bundled Orbitron and JetBrains Mono fonts. [Home page](app/page.tsx) · [Root layout](app/layout.tsx) · [Styles](app/globals.css)
+- One Client Component handles callsign, email, password, confirmation and the terms checkbox. It displays a trimmed callsign as the Operator ID, shows how many of the five controls are filled or checked, and lets users reveal each password independently. The preview disables account submission. [Sign-up form](app/signup-form.tsx)
+- The logo, visibility icons, favicon and font licenses are bundled with the app. [Brand assets](public/neoncore/) · [App icon](app/icon.png) · [Fonts](app/fonts/)
+
+The remaining milestones cover the responsive Figma layouts, validation and password strength, submission and success states, and login and policy destinations. Account mode is still open, with a local demo and managed authentication as the two paths.
+
+## Checks
+
+```bash
+pnpm lint
+pnpm exec tsc --noEmit
+```
+
+Both checks passed for the route foundation. The compiled Turbopack route also returned HTTP 200 and completed Instant Navigation validation in local request simulations for an initial load, client navigation and hot refresh. Browser interaction and production build verification are pending.
 
 ## Neon Postgres
 
-Run `neon login` and `neon deploy` from the linked project directory to refresh the local environment. The app uses the pooled `DATABASE_URL` on the server. Keep `.env.local` and its credentials out of version control.
+The existing database health route uses the pooled Neon `DATABASE_URL` on the server. For a local connectivity check, set that variable in `.env.local`, keep the credentials out of version control, and start the development server.
 
-To verify connectivity through the production build:
-
-```bash
-npm run build
-npm run start
-# In another terminal:
+```sh
 curl --fail-with-body -i http://localhost:3000/api/health/db
 ```
 
-The endpoint runs `SELECT 1` against Neon and returns HTTP 200 with `{"status":"ok"}` on success, or HTTP 503 if the database is unavailable. It does not write data.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The endpoint runs a read-only `SELECT 1`. It returns HTTP 200 with `{"status":"ok"}` when the database responds and HTTP 503 when it is unavailable. [Health route](app/api/health/db/route.ts)
