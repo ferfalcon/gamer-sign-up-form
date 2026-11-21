@@ -1,6 +1,6 @@
 # Gamer sign-up form
 
-NEONCORE signup and login built with the Next.js App Router. [Figma WIP](https://www.figma.com/design/45xWfb2GJsOCfNp19eHClJ/gamer-sign-up-form?node-id=477-1812)
+NEONCORE signup and login built with the Next.js App Router. [Live app](https://gamer-sign-up-form-ferfalcon.vercel.app/) · [Figma WIP](https://www.figma.com/design/45xWfb2GJsOCfNp19eHClJ/gamer-sign-up-form?node-id=477-1812)
 
 ## Run locally
 
@@ -15,7 +15,7 @@ Open [http://localhost:3000](http://localhost:3000). The signup form runs in dem
 
 1. Use an isolated Neon branch for development. This project has a `dev-auth` branch with Auth and the profile migration configured.
 2. Enable email and password signup, require email verification using codes, send a verification code on signup, enable automatic sign-in after verification, and revoke existing sessions on password reset.
-3. Set these server-only variables in `.env.development.local` for local development or in the corresponding deployment environment. The Auth endpoint and both database connections must point to the same branch and database.
+3. Set these server-only variables in `.env.development.local`. The Auth endpoint and both database connections must point to the same branch and database.
    - `DATABASE_URL` is the pooled database connection the app uses at runtime.
    - `DATABASE_URL_UNPOOLED` is the direct database connection for migrations.
    - `NEON_AUTH_BASE_URL` is the branch’s Auth URL, including its database and `/auth` path.
@@ -39,6 +39,15 @@ psql "$DATABASE_URL_UNPOOLED" -v ON_ERROR_STOP=1 -f db/migrations/001_player_pro
 - A signed, HTTP-only signup cookie carries the callsign and policy acceptance through email verification. The app matches it to the verified session’s email before saving the profile. If the cookie expires, a verified user can finish signup from `/complete-profile`. [Signup cookie](app/auth/signup-draft.ts)
 - Postgres stores one `player_profiles` row per Neon Auth user ID. The row includes the callsign, acceptance timestamp, and the versions of the Terms and Privacy Policy. Callsigns preserve display casing and are unique regardless of case. Retries preserve the profile and acceptance already recorded for the user. [Profile queries](app/auth/profiles.ts) · [Migration](db/migrations/001_player_profiles.sql)
 
+## Vercel deployments
+
+- Production builds from `main` and uses the Neon `production` branch. Email/password signup requires an emailed verification code. Neon trusts the public Vercel origin, and localhost access is disabled on that branch. [Production app](https://gamer-sign-up-form-ferfalcon.vercel.app/)
+- The protected `auth-preview` deployment uses the Neon `dev-auth` branch and branch-scoped Vercel Preview variables. [Protected preview](https://gamer-sign-up-form-git-auth-preview-fer-falcons-team.vercel.app/)
+- Vercel’s Production environment and Preview deployments from `auth-preview` each use `DATABASE_URL`, `NEON_AUTH_BASE_URL`, and `NEON_AUTH_COOKIE_SECRET`. Vercel needs these variables at build time for account mode, so redeploy after changing them. Use `DATABASE_URL_UNPOOLED` when applying migrations.
+- Production sends verification and reset codes through Neon Auth’s Custom SMTP provider at `smtp.gmail.com` on port `465`. Store the Google app password directly in Neon. After changing the sender or rotating the password, use **Send test email** on the production branch. [Neon SMTP settings](https://neon.com/docs/auth/production-checklist#email-provider)
+
+The public app links to its [Terms of Use](app/terms/page.tsx) and [Privacy Policy](app/privacy/page.tsx). Both are currently `v1`. Update the corresponding [policy version](app/auth/policy-versions.ts) when either document changes.
+
 ## Checks
 
 ```sh
@@ -49,12 +58,6 @@ curl --fail-with-body -i http://localhost:3000/api/health/db
 
 The health endpoint checks connectivity with `SELECT 1` and returns HTTP 200 when the database responds.
 
-Lint and production builds passed in demo and account modes. Mocked account-flow checks covered signup validation, verification, retrying a failed profile save, account isolation, password reset, and sign-out. Checks on the real `dev-auth` database confirmed case-insensitive callsign uniqueness and that retries preserve the existing profile. Workspace network restrictions blocked application requests to the Auth endpoint, so live email delivery and browser sign-in still need end-to-end verification.
-
-## Public rollout
-
-On the development branch, complete signup with an emailed code, reload `/account`, and confirm the saved callsign appears after signing out and back in. Use a second account to check callsign conflicts and verify that each account sees its own profile. Request a reset code and verify that the new password works and prior sessions end.
-
-The app publishes its [Terms of Use](app/terms/page.tsx) and [Privacy Policy](app/privacy/page.tsx). Update the corresponding [policy version](app/auth/policy-versions.ts) when either document changes.
-
-Configure a dedicated SMTP provider and trusted production origin, enable Auth on the production branch, apply the migration, and set the production environment variables. [Neon production checklist](https://neon.com/docs/auth/production-checklist)
+- Lint and production builds passed in demo and account modes. Mocked account checks covered validation, verification, profile save retries, account isolation, password reset, and sign-out. The `dev-auth` database enforced case-insensitive callsign uniqueness and preserved the existing profile on retry.
+- The production Gmail SMTP test succeeded. The live signup, login, and verification pages loaded, the database health check returned HTTP 200, and the signed-out `/account` route redirected to `/login`.
+- A full browser test with a real verification code is still pending. Complete signup, reload `/account`, sign out, and log back in to check that the same callsign appears. Use a second test account to check callsign conflicts and account isolation. Reset a password and verify that the new password works and prior sessions end.
