@@ -55,4 +55,6 @@ Lint and production builds passed in demo and account modes. Mocked account-flow
 
 On the development branch, complete signup with an emailed code, reload `/account`, and confirm the saved callsign appears after signing out and back in. Use a second account to check callsign conflicts and verify that each account sees its own profile. Request a reset code and verify that the new password works and prior sessions end.
 
-Publish approved Terms and Privacy Policy and update their versions before enabling production signup. Configure a dedicated SMTP provider and trusted production origin, enable Auth on the production branch, apply the migration, and set the production environment variables. [Policy versions](app/auth/policy-versions.ts) · [Neon production checklist](https://neon.com/docs/auth/production-checklist)
+The app publishes its [Terms of Use](app/terms/page.tsx) and [Privacy Policy](app/privacy/page.tsx). Update the corresponding [policy version](app/auth/policy-versions.ts) when either document changes.
+
+Configure a dedicated SMTP provider and trusted production origin, enable Auth on the production branch, apply the migration, and set the production environment variables. [Neon production checklist](https://neon.com/docs/auth/production-checklist)
