@@ -1,6 +1,6 @@
 # Gamer sign-up form
 
-NEONCORE sign-up preview built with the Next.js App Router. The current milestone is the route foundation at `/`. [Figma WIP](https://www.figma.com/design/45xWfb2GJsOCfNp19eHClJ/gamer-sign-up-form?node-id=477-1812)
+NEONCORE sign-up preview built with the Next.js App Router. The responsive sign-up preview is available at `/`. [Figma WIP](https://www.figma.com/design/45xWfb2GJsOCfNp19eHClJ/gamer-sign-up-form?node-id=477-1812)
 
 ## Run locally
 
@@ -13,20 +13,21 @@ Open [http://localhost:3000](http://localhost:3000). The preview runs without da
 
 ## Implemented
 
-- The home route renders the NEONCORE heading and a single-column form shell. The root layout sets the page metadata and loads the bundled Orbitron and JetBrains Mono fonts. [Home page](app/page.tsx) · [Root layout](app/layout.tsx) · [Styles](app/globals.css)
-- One Client Component handles callsign, email, password, confirmation and the terms checkbox. It displays a trimmed callsign as the Operator ID, shows how many of the five controls are filled or checked, and lets users reveal each password independently. The preview disables account submission. [Sign-up form](app/signup-form.tsx)
-- The logo, visibility icons, favicon and font licenses are bundled with the app. [Brand assets](public/neoncore/) · [App icon](app/icon.png) · [Fonts](app/fonts/)
+- The home route uses one stage and panel across mobile, tablet (640px and up), and desktop (1280px and up). The required-fields note switches independently at 600px. The root layout loads the bundled Orbitron and JetBrains Mono fonts. [Home page](app/page.tsx) · [Root layout](app/layout.tsx) · [Styles](app/globals.css)
+- The form and brand readout share validation for all five checks. Errors appear on blur or submit, the Operator ID appears only for a valid callsign, and the password strength meter is advisory. [Sign-up form](app/signup-form.tsx) · [Validation](app/signup-validation.ts)
+- The [local submit adapter](app/signup-demo.ts) simulates a handshake in the browser. It receives only the validated callsign; form entries are not sent or persisted. Pending locks the form, failure allows retry, and success discards the form and retains only the callsign until you leave or restart.
+- The demo links to [Terms](/terms), [Privacy Policy](/privacy), and [Demo log in](/login). Both login links go to the same informational page. These destinations describe the demo, not an account service. Real sign-in, account creation and approved production policies are not wired.
 
-The remaining milestones cover the responsive Figma layouts, validation and password strength, submission and success states, and login and policy destinations. Account mode is still open, with a local demo and managed authentication as the two paths.
+Try the flow using `NeonRaider_99`, `operator@example.com`, and `Synthetic123!` in both password fields. These are synthetic test values; don't use real credentials.
 
 ## Checks
 
 ```bash
 pnpm lint
-pnpm exec tsc --noEmit
+pnpm build
 ```
 
-Both checks passed for the route foundation. The compiled Turbopack route also returned HTTP 200 and completed Instant Navigation validation in local request simulations for an initial load, client navigation and hot refresh. Browser interaction and production build verification are pending.
+Verified the Empty layout in Chromium at 320, 375, 768 and 1440px, on both sides of all three breakpoints, and in a short landscape viewport. The 320px browser flow was checked for blur and submit errors, the terms-only error, independent reveal controls, confirmation revalidation, pending, duplicate-submit prevention, recovery from an injected failure, and success focus and reset. Production browser checks confirmed the demo destinations and found no form values in captured requests or browser storage. Full Figma fixture comparison and manual screen-reader testing remain open.
 
 ## Neon Postgres
 

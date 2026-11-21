@@ -9,6 +9,7 @@
   --color-muted: hsl(211 18% 68%);
   --color-text: hsl(208 49% 92%);
   --color-accent: hsl(77 90% 59%);
+  --color-error: hsl(4 100% 74%);
 }
 
 body {
@@ -17,66 +18,144 @@ body {
   font-family: var(--font-jetbrains-mono), monospace;
 }
 
-:where(input, button):focus-visible {
+:where(input, button, a, #signup-heading):focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .signup {
   display: grid;
-  gap: 1.5rem;
-  max-inline-size: 37rem;
-  margin-inline: auto;
-  padding: 2rem 1rem;
+  grid-template-columns: minmax(1rem, 1fr) minmax(0, 35rem) minmax(1rem, 1fr);
+  gap: 2rem 0;
+  padding-block: 2rem 3rem;
+  overflow-wrap: anywhere;
 }
 
-.signup-brand h1 {
-  margin-block: 1.5rem 0.5rem;
-  font: 800 2.25rem/1.12 var(--font-orbitron), sans-serif;
+.signup-brand,
+.signup-panel {
+  grid-column: 2;
+  min-inline-size: 0;
+}
+
+.signup-brand {
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  grid-template-areas: "logo count" "intro intro" "operator operator";
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+.signup-logo {
+  grid-area: logo;
+  block-size: auto;
+}
+
+.signup-intro {
+  grid-area: intro;
+  margin-block: 2rem 1rem;
+}
+
+.signup-intro h1 {
+  margin-block-end: 1rem;
+  font: 800 2.25rem/2.5rem var(--font-orbitron), sans-serif;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.signup-brand h1 span {
+.signup-intro h1 span {
   color: var(--color-accent);
 }
 
-.signup-brand p,
-.signup-readout,
+.signup-intro p,
+.signup-summary,
 .signup-form-heading,
 .signup-field label {
   font-size: 0.75rem;
+  line-height: 1rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-.signup-brand p,
+.signup-intro p,
+.signup-summary,
 .signup-form p {
   color: var(--color-muted);
 }
 
-.signup-readout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.25rem 1rem;
-  padding-block: 0.75rem;
-  border-block: 1px solid var(--color-panel-border);
+.signup-summary {
+  display: contents;
+}
+
+.signup-count {
+  grid-area: count;
+  text-align: end;
 }
 
 .signup-operator {
-  grid-column: 1 / -1;
-  grid-row: 2;
+  grid-area: operator;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding-block: 0.5625rem;
+  border-block: 1px solid var(--color-panel-border);
+}
+
+.signup-operator dd {
+  min-inline-size: 0;
   font-weight: 700;
-  overflow-wrap: anywhere;
+  text-align: end;
+}
+
+.signup-operator dd[data-assigned="true"] {
+  color: var(--color-text);
   text-transform: none;
+}
+
+.signup-checks,
+.signup-backdrop,
+.signup-note-full {
+  display: none;
+}
+
+.signup-panel {
+  grid-row: 2;
+  position: relative;
+  padding: 2rem 1.25rem;
+  background-color: var(--color-panel);
+  box-shadow: inset 0 0 0 1px var(--color-panel-border), 0 1rem 3rem hsl(214 60% 2% / 0.6);
+}
+
+.signup-panel::before,
+.signup-panel::after {
+  content: "";
+  position: absolute;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border: 2px solid var(--color-accent);
+  pointer-events: none;
+}
+
+.signup-panel::before {
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  border-block-end: 0;
+  border-inline-end: 0;
+}
+
+.signup-panel::after {
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  border-block-start: 0;
+  border-inline-start: 0;
 }
 
 .signup-form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
-  padding: 1.25rem;
-  border: 1px solid var(--color-panel-border);
-  background-color: var(--color-panel);
+  min-inline-size: 0;
 }
 
 .signup-form-heading {
@@ -84,23 +163,27 @@ body {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.25rem 1rem;
-  padding-block-end: 0.75rem;
+  padding-block-end: calc(1rem - 1px);
   border-block-end: 1px solid var(--color-panel-border);
 }
 
-.signup-form-heading h2 {
-  font-weight: 700;
-}
-
 .signup-field,
-.signup-action {
+.signup-consent {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 
+.signup-field label::before {
+  content: ">" / "";
+  margin-inline-end: 0.5rem;
+  color: var(--color-accent);
+}
+
 .signup-field p,
-.signup-action p {
+.signup-form .signup-error {
   font-size: 0.75rem;
+  line-height: 1rem;
 }
 
 .signup-field input {
@@ -134,12 +217,56 @@ body {
   cursor: pointer;
 }
 
-.signup-password button:hover {
+.signup-password button:is(:hover, [aria-pressed="true"]):not(:disabled) {
   background-color: var(--color-page);
+  color: var(--color-accent);
+}
+
+.signup-password button:focus-visible {
+  outline-width: 4px;
+  outline-offset: -4px;
+}
+
+.signup-field input:hover:enabled,
+.signup-terms input:hover:enabled {
+  border-color: var(--color-muted);
+}
+
+.signup-field input[data-valid="true"] {
+  padding-inline-end: 2.5rem;
+  border-color: var(--color-accent);
+  background: var(--color-page) url("/neoncore/icon-tick-20.svg") right 0.75rem center / 1.25rem no-repeat;
+}
+
+.signup-field input[aria-invalid="true"] {
+  border-color: var(--color-error);
 }
 
 .signup-password :focus-visible {
   z-index: 1;
+}
+
+.signup-strength {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.signup-strength span {
+  block-size: 0.25rem;
+  background-color: var(--color-panel-border);
+}
+
+.signup-strength [data-lit="true"] {
+  background-color: var(--color-accent);
+}
+
+.signup-strength[data-level="1"] [data-lit="true"] {
+  background-color: var(--color-error);
+}
+
+.signup-strength:is([data-level="2"], [data-level="3"]) [data-lit="true"] {
+  background-color: hsl(40 100% 65%);
 }
 
 .signup-terms {
@@ -148,22 +275,310 @@ body {
   gap: 0.75rem;
   font-size: 0.875rem;
   line-height: 1.5rem;
+}
+
+.signup-terms :is(label, input):not(:disabled) {
   cursor: pointer;
 }
 
 .signup-terms input {
+  appearance: none;
   flex: 0 0 1.5rem;
   block-size: 1.5rem;
-  accent-color: var(--color-accent);
+  border: 1px solid var(--color-control-border);
+  background-color: var(--color-page);
 }
 
-.signup-action button {
+.signup-terms input:checked {
+  border-color: var(--color-accent);
+  background: var(--color-accent) url("/neoncore/icon-tick-16.svg") center / 1rem no-repeat;
+}
+
+@media (forced-colors: active) {
+  .signup-terms input {
+    appearance: auto;
+  }
+}
+
+.signup-terms input[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.signup-count[data-ready="true"],
+.signup-checks [data-ready="true"] dd {
+  color: var(--color-accent);
+}
+
+.signup-form .signup-error,
+.signup-checks [data-error="true"] dd {
+  color: var(--color-error);
+}
+
+.signup-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.signup-error img {
+  flex: 0 0 1rem;
+}
+
+.signup-action {
+  display: grid;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.signup-action p {
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+}
+
+.signup-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.signup-link:hover {
+  color: var(--color-text);
+}
+
+button.signup-link {
+  justify-self: center;
+  min-block-size: 1.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.signup-primary {
+  display: grid;
+  place-items: center;
+  text-align: center;
   min-block-size: 3rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-panel-border);
-  color: var(--color-muted);
+  border: 1px solid var(--color-accent);
+  background-color: var(--color-accent);
+  color: var(--color-page);
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.signup-primary:not(:disabled) {
+  cursor: pointer;
+}
+
+.signup-primary:hover:not(:disabled) {
+  background-color: hsl(77 90% 69%);
+}
+
+.signup-primary:disabled:not([data-pending="true"]) {
+  border-color: var(--color-control-border);
+  background-color: transparent;
+  color: var(--color-muted);
+}
+
+.signup-primary[data-pending="true"] {
+  background-color: transparent;
+  color: var(--color-accent);
+}
+
+.signup-form[data-pending="true"] :is(.signup-field, .signup-consent) {
+  opacity: 0.6;
+}
+
+.signup-panel[data-success="true"] {
+  display: grid;
+  align-items: center;
+  min-block-size: 23rem;
+}
+
+.signup-success {
+  display: grid;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.signup-success-icon {
+  display: grid;
+  place-items: center;
+  block-size: 3rem;
+}
+
+.signup-success-icon img {
+  max-inline-size: none;
+  margin-block: -0.75rem;
+}
+
+.signup-success h2 {
+  font: 800 1.5rem/2rem var(--font-orbitron), sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.signup-success h2 span {
+  color: var(--color-accent);
+}
+
+.signup-success p {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+.demo-info.signup {
+  grid-template-columns: minmax(1rem, 1fr) minmax(0, 35rem) minmax(1rem, 1fr);
+  align-content: start;
+}
+
+.demo-info .demo-info-panel {
+  grid-area: 1 / 2;
+  display: grid;
+  justify-items: start;
+  gap: 1.5rem;
+}
+
+.demo-info h1 {
+  font: 800 1.5rem/2rem var(--font-orbitron), sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.demo-info p {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+@media (min-width: 37.5rem) {
+  .signup-note-full {
+    display: inline;
+  }
+}
+
+@media (min-width: 40rem) {
+  .signup {
+    row-gap: 2.5rem;
+    padding-block: 4rem;
+  }
+
+  .signup-intro {
+    margin-block-end: 2rem;
+  }
+
+  .signup-intro h1 {
+    font-size: 2.5rem;
+    line-height: 3rem;
+  }
+
+  .signup-operator {
+    padding-block: 0.6875rem;
+  }
+
+  .signup-panel {
+    padding: 2.5rem;
+  }
+
+  .signup-panel[data-success="true"] {
+    min-block-size: 45.25rem;
+  }
+
+  /* Paint the clipped artwork in its own grid item, not on a content wrapper. */
+  .signup-backdrop {
+    display: block;
+    grid-area: 2 / 1 / 3 / -1;
+    margin-block: -2.5rem;
+    background: url("/neoncore/pattern-backdrop.svg") center / 50rem no-repeat;
+    pointer-events: none;
+  }
+}
+
+@media (min-width: 80rem) {
+  .signup {
+    grid-template-columns: minmax(1rem, 1fr) minmax(0, 35rem) 5rem minmax(0, 30rem) minmax(1rem, 1fr);
+    min-block-size: 100vh;
+    min-block-size: 100svh;
+    align-content: center;
+  }
+
+  .signup-brand {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "logo" "intro" "summary";
+    align-self: center;
+  }
+
+  .signup:has([aria-invalid="true"]) .signup-brand {
+    align-self: start;
+  }
+
+  .signup-intro {
+    margin-block: 5rem 4rem;
+  }
+
+  .signup-intro h1 {
+    font-size: 4.5rem;
+    line-height: 5rem;
+  }
+
+  .signup-summary {
+    grid-area: summary;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    grid-template-areas: "operator count" "checks checks";
+    align-items: start;
+    gap: 1rem;
+    padding-block-start: 1.5rem;
+    border-block-start: 1px solid var(--color-panel-border);
+  }
+
+  .signup-operator {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0;
+    border: 0;
+  }
+
+  .signup-operator dd {
+    font: 800 1.5rem/2rem var(--font-orbitron), sans-serif;
+    letter-spacing: 0.04em;
+    text-align: start;
+  }
+
+  .signup-checks {
+    display: grid;
+    grid-area: checks;
+    gap: 0.5rem;
+  }
+
+  .signup-checks > div {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .signup-checks > div::before {
+    content: "";
+    grid-column: 2;
+    grid-row: 1;
+    border-block-start: 1px dotted var(--color-panel-border);
+  }
+
+  .signup-checks dt {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .signup-panel {
+    grid-area: 1 / 4;
+  }
+
+  .signup-backdrop {
+    grid-area: 1 / 4 / 2 / -1;
+    margin-block: -4rem;
+    background-position: left center;
+    background-size: 60rem;
+  }
 }

@@ -20,7 +20,7 @@ const jetBrainsMono = localFont({
 
 export const metadata: Metadata = {
   title: "Join the Nexus | NEONCORE",
-  description: "Initialize your NEONCORE identity.",
+  description: "Try the NEONCORE sign-up demo. No account is created.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
