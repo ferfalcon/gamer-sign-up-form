@@ -20,6 +20,21 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Neon Postgres
+
+Run `neon login` and `neon deploy` from the linked project directory to refresh the local environment. The app uses the pooled `DATABASE_URL` on the server. Keep `.env.local` and its credentials out of version control.
+
+To verify connectivity through the production build:
+
+```bash
+npm run build
+npm run start
+# In another terminal:
+curl --fail-with-body -i http://localhost:3000/api/health/db
+```
+
+The endpoint runs `SELECT 1` against Neon and returns HTTP 200 with `{"status":"ok"}` on success, or HTTP 503 if the database is unavailable. It does not write data.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
